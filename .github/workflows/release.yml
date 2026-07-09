@@ -30,7 +30,7 @@ jobs:
         with:
           workspaces: src-tauri
 
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
 
       - name: Build + sign + publish release
         uses: tauri-apps/tauri-action@v0
