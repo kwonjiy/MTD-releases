@@ -1,0 +1,49 @@
+name: Release MTD (desktop)
+
+# 공개 MTD-releases에서 실행 → private kwonjiy/MTD 소스를 PAT로 체크아웃 → 빌드+서명 →
+# 이 저장소에 공개 릴리스 + latest.json 생성. 설치된 앱이 latest.json을 보고 자동 업데이트.
+
+on:
+  workflow_dispatch: {} # Actions 탭에서 "Run workflow"로 릴리스 컷
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout private source (kwonjiy/MTD)
+        uses: actions/checkout@v4
+        with:
+          repository: kwonjiy/MTD
+          ref: main
+          token: ${{ secrets.MTD_SOURCE_PAT }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Build + sign + publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        with:
+          tagName: app-v__VERSION__
+          releaseName: 'MTD v__VERSION__'
+          releaseBody: 'MTD 데스크탑 자동 업데이트 릴리스'
+          releaseDraft: false
+          prerelease: false
+          args: --bundles nsis
